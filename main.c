@@ -1,5 +1,15 @@
 #include <stdio.h>
-#include "nesHeaders.h"
+
+// general structurs and information
+
+#define iNES 0
+#define NES20 1
+#define UNIF 2
+#define NSF 3
+#define NSF2 4
+#define NSFE 5
+#define FDS 6
+#define QD 7
 
 struct CPU{
 	char memory[8000]; // 6502 interrnal memory 8000kB, 64kb
@@ -34,6 +44,59 @@ char opCodesLUT[256][4] = {
 	"CPY","CMP","NOP","DCP","CPY","CMP","DEC","DCP","INY","CMP","DEX","AXS","CPY","CMP","DEC","DCP","BNE","CMP","STP","DCP","NOP","CMP","DEC","DCP","CLD","CMP","NOP","DCP","NOP","CMP","DEC","DCP",
 	"CPX","SBC","NOP","ISC","CPX","SBC","INC","ISC","INX","SBC","NOP","SBC","CPX","SBC","INC","ISC","BEQ","SBC","STP","ISC","NOP","SBC","INC","ISC","SED","SBC","NOP","ISC","NOP","SBC","INC","ISC",
 }; 
+
+char headersLUT[7][6] = {"iNES", "NES20", "UNIF", "NSF", "NSF2", "FDS", "QD"};
+
+// defined functions to identify information forr the emulation
+
+char getHeader (char* header){
+	char headerID = 0;
+	if (header[0]=='N' && header[1]=='E' && header[2]=='S' && header[3]==0x1A){
+		headerID = iNES; // iNES header
+		printf("Identified iNES\n");
+		if ((header[7]&0x0C) == 0x08){
+			headerID = NES20; // NES 2.0 header
+			printf("Identified NES2.0\n");
+		}
+	}else if(header[0]=='U' && header[1]=='N'&& header[2]=='I' && header[3]=='F'){
+		headerID = UNIF; //UNIF header
+		printf("Identified UNIF\n");
+	}else if(header[0]=='N' && header[1]=='E' && header[2]=='S' && header[3]=='M' && header[4]==0x1A){
+		switch (header[5]){
+			case 1:
+				headerID = NSF;
+				printf("Identified NSF\n");
+			case 2:
+				headerID = NSF2;
+				printf("Identified NSF2\n");
+		}
+	}else if(header[0]=='N' && header[1]=='S'&& header[2]=='F' && header[3]=='E'){
+		headerID = NSFE;
+
+	}else if (header[0]=='F' && header[1]=='D' && header[2]=='S' && header[3]==0x1A){
+		headerID = FDS;
+		printf("Identified FDS\n");
+	}else{
+		headerID = QD; // assume QD format
+		printf("Identified default: QD\n");
+	}
+	return headerID;
+}
+
+void getHeaderInfo(char headerID, char* header){
+	switch (headerID){
+		case iNES:
+		case NES20:
+		case UNIF:
+		case NSF:
+		case NSF2:
+		case NSFE:
+		case FDS:
+		case QD:
+	}
+}
+
+//defined functions for the emulation
 
 void exec (struct CPU* processor,FILE* program){
 	fseek(program, processor->PC,SEEK_SET);
@@ -89,10 +152,24 @@ int main (int argc, char* argv[]){
 			printf("failed to open file: %s\n", argv[1]);
 			return 0;
 		}else{
-			char header[4];
-			fread(header, 1, 4, file); // push 1 byte 4 times from file[0] to header
-			printf("is a nes file? %d\n", isNESFile(header));
+			char header[5];
+			fread(header, 1, 5, file); // push 1 byte 5 times from file[0] to header
+			char fileFormat = getHeader(header);
+			printf("File format detected: %s\n", headersLUT[fileFormat]);
 
+			switch (fileFormat){ // allocates the apropriate size for a given header
+				case iNES:
+				case NES20:
+					char header[16];
+					fread(header,1,16,file);
+					break;
+				case UNIF:
+				case NSF:
+				case NSF2:
+				case NSFE:
+				case FDS:
+				case QD:
+			}
 			char status = 0;
 			while (status == 0){
 				char opcode[1];
@@ -100,7 +177,6 @@ int main (int argc, char* argv[]){
 			}
 		}
 	}
-
 
 
 	powerOn(&CPU, &PPU);
