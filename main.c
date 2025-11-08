@@ -140,41 +140,44 @@ int main (int argc, char* argv[]){
 
 	printf("Got %d arguments.\n", argc);
 	for (int i = 0; i < argc; i++){
-		printf("got argument: %s\n", argv[i]);
+		printf("got argument(%d): %s\n",i, argv[i]);
 	}
 	printf("Got path: %s\n", argv[1]);
 
 	if (argc == 1){
 		printf("Please provide a path to an nes rom\n");
 	}else{
-		FILE* file = fopen(argv[1], "rb");
-		if (file == NULL) { //if the file is empty or failed to open, error
+		FILE* rom = fopen(argv[1], "rb");
+		if (rom == NULL) { //if the file is empty or failed to open, error
 			printf("failed to open file: %s\n", argv[1]);
 			return 0;
 		}else{
-			char header[5];
-			fread(header, 1, 5, file); // push 1 byte 5 times from file[0] to header
+			char header[8];
+			fread(header, 1, 8, rom); // push 1 byte 5 times from file[0] to header
 			char fileFormat = getHeader(header);
 			printf("File format detected: %s\n", headersLUT[fileFormat]);
 
-			switch (fileFormat){ // allocates the apropriate size for a given header
-				case iNES:
-				case NES20:
-					char header[16];
-					fread(header,1,16,file);
-					break;
-				case UNIF:
-				case NSF:
-				case NSF2:
-				case NSFE:
-				case FDS:
-				case QD:
+			if (fileFormat == iNES | fileFormat == NES20 | fileFormat == FDS ){  // allocates the apropriate size for a given header
+		                //all 16 byte headers
+				char header[16];
+				fread(header,1,16,rom);
+				printf("header has a size of 16 bytes\n");
+			}else if(fileFormat == UNIF){
+				//32 byte header
+				char header[32];
+				fread(header,1,32,rom);
+				printf("header has a size of 32 bytes\n");
+			}else if (fileFormat == NSF | fileFormat == NSF2){
+				char header[0x80];
+				fread(header,1,0x80,rom);
+				printf("header has a size of 128 bytes\n");
+			}else if(fileFormat == NSFE | fileFormat == QD){
+				printf("File doesn't have additional info in the header\n");
+			}else{
+				printf("failed to identify header exited\n");
+				return 0;
 			}
 			char status = 0;
-			while (status == 0){
-				char opcode[1];
-				exec(&CPU,file);
-			}
 		}
 	}
 
